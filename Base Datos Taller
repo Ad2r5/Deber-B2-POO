@@ -1,0 +1,324 @@
+Ejercicio 1
+ackage empleados; 
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.Statement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.PreparedStatement;
+import java.util.Scanner;
+
+public class Empresass { 
+
+    public static void main(String[] args) { 
+        Scanner sc = new Scanner(System.in); 
+        String url = "jdbc:sqlite:empresa.db"; // El URL que conecta  a la base de datos SQLite
+
+        try (Connection conn = DriverManager.getConnection(url)) { // Intenta conectar a la base de datos
+
+            if (conn != null) { // Si la conexion se establece correctamente sale un
+                System.out.println("Conexion correcta en la base de datos SQLite"); // Mensaje de confirmación
+            } else { // Si no se conecta
+                System.out.println("No se pudo conectar con la base de datos");
+                return; // Sale del programa
+            }
+
+            Statement stmt = conn.createStatement(); // Objeto para ejecutar sentencias SQL
+
+            // Crea la tabla empleados si no existe
+            stmt.execute("CREATE TABLE IF NOT EXISTS empleados (id INTEGER PRIMARY KEY AUTOINCREMENT, nombre TEXT, rol TEXT, salario REAL)");
+
+            // Pide cuantos empleados se van a ingresar
+            System.out.print("Cuantos empleados desea ingresar? ");
+            int n = Integer.parseInt(sc.nextLine()); // Convierte la entrada a un numero
+
+            for (int i = 0; i < n; i++) { //Se ingresar cada empleado
+                System.out.print("Nombre: ");
+                String nombre = sc.nextLine(); // Lee el nombre del empleado
+
+                System.out.print("Tipo (gerente/desarrollador): ");
+                String tipo = sc.nextLine().toLowerCase(); // Lee el tipo de empleado y lo convierte a minusculas
+
+                System.out.print("Horas trabajadas: ");
+                int horas = Integer.parseInt(sc.nextLine()); // Lee las horas trabajadas
+
+                Empleado emp; // Variable para el objeto empleado
+
+                // Aqui verifica el tipo y crea el objeto que es
+                if (tipo.equals("gerente")) {
+                    emp = new TipGerente(nombre, horas); // crea un gerente
+                } else if (tipo.equals("desarrollador")) {
+                    emp = new TipDesarrollador(nombre, horas); // crea un desarrollador
+                } else {
+                    // Si el tipo es invalido lo omite
+                    System.out.println(" Tipo de empleado invalido, lo  omitira\n");
+                    continue; // Pasa al siguiente ciclo sin guardar nada
+                }
+
+                double salario = emp.calcularSalario(); // Calcula el salario del empleado
+
+                // Guarda los datos del empleado en la base de datos
+                PreparedStatement ps = conn.prepareStatement("INSERT INTO empleados (nombre, rol, salario) VALUES (?, ?, ?)");
+                ps.setString(1, emp.getNombre()); // Establece el nombre
+                ps.setString(2, emp.obtenerRol()); // Establece el rol
+                ps.setDouble(3, salario); // Establece el salario
+                ps.executeUpdate(); // Ejecuta el insert
+
+                // Muestra mensaje de empleado ingresado con su salario
+                System.out.println(emp.getNombre() + " (" + emp.obtenerRol() + ") → $" + salario + "\n");
+            }
+
+            // Consulta todos los empleados guardados en la base de datos
+            ResultSet rs = stmt.executeQuery("SELECT * FROM empleados");
+            System.out.println("\nLista Empleados"); // Encabezado
+
+            while (rs.next()) { // Recorre los resultados
+                // Imprime los datos del empleado como ID | Nombre | Rol | Salario
+                System.out.println(rs.getInt("id") + " | " + rs.getString("nombre") + " | " +
+                        rs.getString("rol") + " | $" + rs.getDouble("salario"));
+            }
+
+        } catch (SQLException e) { 
+            System.out.println("Error: " + e.getMessage()); 
+        }
+
+    } 
+}
+
+
+package empleados;
+
+public interface Empleado {
+    double calcularSalario();
+    String obtenerRol();
+    String getNombre();
+}
+
+package empleados; 
+
+// La clase TipDesarrollador implementa la interfaz Empleado
+public class TipDesarrollador implements Empleado  {
+
+    private String nombre;
+    private int horas;
+
+    public TipDesarrollador(String nombre, int horas) {
+        this.nombre = nombre; 
+        this.horas = horas;   
+    }
+
+    // Implementacion del metodo calcularSalario definido en la interfaz Empleado
+    @Override
+    public double calcularSalario() {
+        return horas * 30.0; // El salario se calcula multiplicando las horas por $30
+    }
+
+    // Implementacion del metodo obtenerRol definido en la interfaz Empleado
+    @Override
+    public String obtenerRol() {
+        return "Desarrollador"; // Devuelve el rol del empleado
+    }
+
+    // Implementacion del metodo getNombre definido en la interfaz Empleado
+    @Override
+    public String getNombre() {
+        return nombre; // Devuelve el nombre del desarrollador
+    }
+}
+
+package empleados; 
+
+public class TipGerente implements Empleado {
+
+    private String nombre;
+    private int horas;
+
+    public TipGerente(String nombre, int horas) {
+        this.nombre = nombre; 
+        this.horas = horas;   
+    }
+
+    // Implementacion del metodo calcularSalario definido en la interfaz Empleado
+    @Override
+    public double calcularSalario() {
+        return horas * 50.0; // El salario se calcula multiplicando las horas por $50
+    }
+
+    // Implementacion del metodo obtenerRol definido en la interfaz Empleado
+    @Override
+    public String obtenerRol() {
+        return "Gerente"; // Devuelve el rol del empleado
+    }
+
+    // Implementacion del metodo getNombre definido en la interfaz Empleado
+    @Override
+    public String getNombre() {
+        return nombre; // Devuelve el nombre del gerente
+    }
+}
+
+
+
+
+Ejercicio 2
+package basedatospoo;
+
+/**
+ *
+ * @author PCENTER
+ */
+import java.sql.*; // Importa todas las clases necesarias para conectarse y trabajar con bases de datos
+import java.util.Scanner; // Importa la clase Scanner para leer datos ingresados por el usuario
+
+public class BaseDatosPoo {
+    public static void main(String[] args) {
+        System.out.println("Gestion de vehiculos"); // Muestra un título en consola
+
+        Scanner scanner = new Scanner(System.in); // Crea un objeto Scanner para leer entradas del usuario
+
+        // Define la URL de conexión a una base de datos SQLite. Si no existe, se crea un archivo "vehiculos.db"
+        String url = "jdbc:sqlite:vehiculos.db";
+
+        // Intenta establecer una conexión con la base de datos
+        try (Connection conn = DriverManager.getConnection(url)) {
+            if (conn != null) {
+                System.out.println("Hay coneccion con sql"); // Confirma que se logró la conexión
+
+                // Sentencia SQL para crear la tabla 'vehiculos' si no existe
+                String sqlCrear = "CREATE TABLE IF NOT EXISTS vehiculos (" +
+                                  "id INTEGER PRIMARY KEY AUTOINCREMENT," + // ID autoincremental como clave primaria
+                                  "tipo TEXT, marca TEXT, modelo TEXT)";     // Columnas tipo, marca y modelo
+
+                Statement stmt = conn.createStatement(); // Crea un objeto Statement para ejecutar sentencias SQL
+                stmt.execute(sqlCrear); // Ejecuta la sentencia SQL de creación de tabla
+
+                boolean continuar = true; // Variable para controlar si el usuario quiere seguir ingresando vehículos
+
+                // Bucle principal para registrar múltiples vehículos
+                while (continuar) {
+                    System.out.print("Ingrese tipo de vehículo (Auto/Moto): ");
+                    String tipo = scanner.nextLine(); // Lee el tipo de vehículo
+
+                    System.out.print("Ingrese la marca: ");
+                    String marca = scanner.nextLine(); // Lee la marca del vehículo
+
+                    System.out.print("Ingrese el modelo: ");
+                    String modelo = scanner.nextLine(); // Lee el modelo del vehículo
+
+                    Vehiculo vehiculo; // Declara una variable de tipo Vehiculo
+
+                    // Según el tipo ingresado, se crea una instancia de Auto o Moto
+                    if (tipo.equalsIgnoreCase("Auto")) {
+                        vehiculo = new Auto(marca, modelo);
+                    } else if (tipo.equalsIgnoreCase("Moto")) {
+                        vehiculo = new Moto(marca, modelo);
+                    } else {
+                        System.out.println("Tipo inválido. Intente otra vez.");
+                        continue; // Si el tipo es inválido, vuelve al inicio del bucle
+                    }
+
+                    vehiculo.mostrarInformacion(); // Muestra la información del vehículo usando polimorfismo
+
+                    // Sentencia SQL para insertar los datos en la tabla 'vehiculos'
+                    String sqlInsertar = "INSERT INTO vehiculos (tipo, marca, modelo) VALUES (?, ?, ?)";
+                    PreparedStatement pstmt = conn.prepareStatement(sqlInsertar); // Prepara la sentencia para evitar SQL Injection
+                    pstmt.setString(1, vehiculo.getTipo()); // Asigna el valor del tipo al primer signo de pregunta (?)
+                    pstmt.setString(2, vehiculo.marca);    // Asigna la marca
+                    pstmt.setString(3, vehiculo.modelo);   // Asigna el modelo
+                    pstmt.executeUpdate(); // Ejecuta la inserción en la base de datos
+
+                    System.out.print("¿Desea ingresar otro vehículo? (s/n): ");
+                    String respuesta = scanner.nextLine(); // Lee la respuesta del usuario
+
+                    if (respuesta.equalsIgnoreCase("n")) {
+                        continuar = false; // Sale del bucle si la respuesta es 'n'
+                    }
+                }
+
+                // Muestra todos los registros almacenados en la base de datos
+                System.out.println("\n--- Vehiculos ingresados ---");
+                String sqlSelect = "SELECT * FROM vehiculos"; // Consulta SQL para seleccionar todos los registros
+                ResultSet rs = stmt.executeQuery(sqlSelect); // Ejecuta la consulta y obtiene los resultados
+
+                while (rs.next()) {
+                    // Muestra cada registro en formato: id - tipo - marca - modelo
+                    System.out.println(rs.getInt("id") + " - " +
+                                       rs.getString("tipo") + " - " +
+                                       rs.getString("marca") + " - " +
+                                       rs.getString("modelo"));
+                }
+            }
+        } catch (SQLException e) {
+            // Captura errores de SQL y los muestra
+            System.out.println("Error con SQLite: " + e.getMessage());
+        }
+
+        System.out.println("--- FIN DEL PROGRAMA ---"); // Mensaje final
+    }
+}
+
+
+package basedatospoo;
+
+/**
+ *
+ * @author PCENTER
+ */
+public class Auto extends Vehiculo {
+    public Auto(String marca, String modelo) {
+        super(marca, modelo);
+    }
+
+    @Override
+    public void mostrarInformacion() {
+        System.out.println("Auto: " + marca + " " + modelo);
+    }
+
+    @Override
+    public String getTipo() {
+        return "Auto";
+    }
+}
+
+package basedatospoo;
+
+/**
+ *
+ * @author PCENTER
+ */
+public class Moto extends Vehiculo {
+    public Moto(String marca, String modelo) {
+        super(marca, modelo);
+    }
+
+    @Override
+    public void mostrarInformacion() {
+        System.out.println("Moto: " + marca + " " + modelo);
+    }
+
+    @Override
+    public String getTipo() {
+        return "Moto";
+    }
+}
+
+
+package basedatospoo;
+
+/**
+ *
+ * @author PCENTER
+ */
+public abstract class Vehiculo {
+    public String marca;
+    public String modelo;
+
+    public Vehiculo(String marca, String modelo) {
+        this.marca = marca;
+        this.modelo = modelo;
+    }
+
+    public abstract void mostrarInformacion();
+    public abstract String getTipo();
+}
